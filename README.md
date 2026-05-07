@@ -1,152 +1,223 @@
-# YouTrack–Slack Bot
+# YouTrack–Slack Bot — Setup Guide
 
-A Python Slack bot that connects a self-hosted YouTrack instance with Slack. Built with `slack_bolt` in Socket Mode — no public URL or open inbound port is required for the Slack connection itself.
-
-## Features
-
-| Feature | How to trigger |
-|---------|---------------|
-| **YouTrack → Slack notifications** | YouTrack POSTs a webhook to the bot; a formatted message appears in `#youtrack-activity` |
-| **Slack → YouTrack task creation** | `/create-task` slash command opens a modal |
-| **Otter.ai → YouTrack notes** | `/append-notes` lets you pick a meeting and attach its AI summary to a ticket |
+This bot connects your YouTrack project tracker to Slack so your team can:
+- Get an automatic Slack message whenever a new YouTrack task is created
+- Create YouTrack tasks directly from Slack with `/create-task`
+- Attach meeting notes from Otter.ai to a YouTrack ticket with `/append-notes`
 
 ---
 
-## Prerequisites
+## What you'll need before starting
 
-- Python 3.11+
-- A Slack app with Bot Token Scopes: `chat:write`, `commands`, `im:write`
-- Slack app with Socket Mode enabled (generates an App-Level Token with `connections:write`)
-- Slash commands `/create-task` and `/append-notes` configured in the Slack app settings
-- A YouTrack permanent token with issue read/write access
-- (Optional) An Otter.ai enterprise API key for the notes feature
+- A computer that stays on (the bot runs on it)
+- Python installed (see Step 1)
+- Access to your team's Slack workspace as an admin (or ask your Slack admin)
+- Your YouTrack login info
 
 ---
 
-## Setup
+## Step 1 — Install Python
 
-### 1. Clone and install dependencies
+1. Go to **https://www.python.org/downloads/**
+2. Click the big yellow "Download Python" button
+3. Run the installer — on the first screen, **check the box that says "Add Python to PATH"** before clicking Install
+4. When it finishes, open a Terminal (Mac) or Command Prompt (Windows) and type:
+   ```
+   python --version
+   ```
+   You should see something like `Python 3.12.0`. If you do, Python is installed correctly.
 
-```bash
-git clone <repo-url>
-cd youtrack-slack-bot
-python -m venv .venv && source .venv/bin/activate
+> **How to open a Terminal / Command Prompt**
+> - **Mac:** Press `Command + Space`, type `Terminal`, press Enter
+> - **Windows:** Press the Windows key, type `cmd`, press Enter
+
+---
+
+## Step 2 — Download the bot files
+
+1. Download this project as a ZIP file (there's a button on the GitHub page)
+2. Unzip it somewhere easy to find, like your Desktop
+3. In your Terminal / Command Prompt, navigate into that folder by typing:
+   ```
+   cd Desktop/youtrack-slack-bot
+   ```
+   *(Adjust the path if you unzipped it somewhere else)*
+
+---
+
+## Step 3 — Install the bot's dependencies
+
+Think of this like installing apps the bot needs to run. In your Terminal, type:
+
+```
 pip install -r requirements.txt
 ```
 
-### 2. Configure environment variables
+Wait for it to finish. You'll see a lot of text scroll by — that's normal.
 
-```bash
-cp .env.example .env
+---
+
+## Step 4 — Create your Slack App
+
+This is the part that takes the most steps, but just follow along one click at a time.
+
+1. Go to **https://api.slack.com/apps** and sign in with your Slack account
+2. Click **"Create New App"**
+3. Choose **"From scratch"**
+4. Give it a name (e.g. `YouTrack Bot`) and pick your workspace, then click **Create App**
+
+### Turn on Socket Mode
+5. In the left sidebar, click **"Socket Mode"**
+6. Toggle it **On**
+7. It will ask you to name a token — type `youtrack-bot-token` and click **Generate**
+8. **Copy the token that appears** — it starts with `xapp-`. Save it somewhere (a notes app is fine). This is your `SLACK_APP_TOKEN`.
+
+### Give the bot permissions
+9. In the left sidebar, click **"OAuth & Permissions"**
+10. Scroll down to **"Bot Token Scopes"** and click **"Add an OAuth Scope"**
+11. Add these three scopes one at a time:
+    - `chat:write`
+    - `commands`
+    - `im:write`
+12. Scroll back to the top and click **"Install to Workspace"**, then click **Allow**
+13. **Copy the "Bot User OAuth Token"** — it starts with `xoxb-`. This is your `SLACK_BOT_TOKEN`.
+
+### Add slash commands
+14. In the left sidebar, click **"Slash Commands"**
+15. Click **"Create New Command"** and fill in:
+    - Command: `/create-task`
+    - Request URL: `https://placeholder.example.com` *(doesn't matter, Socket Mode ignores this)*
+    - Short description: `Create a YouTrack task`
+    - Click Save
+16. Click **"Create New Command"** again:
+    - Command: `/append-notes`
+    - Request URL: `https://placeholder.example.com`
+    - Short description: `Append Otter.ai notes to a ticket`
+    - Click Save
+
+### Reinstall the app
+17. Go back to **"OAuth & Permissions"** and click **"Reinstall to Workspace"** → Allow
+    *(Adding slash commands requires a reinstall)*
+
+---
+
+## Step 5 — Get your YouTrack token
+
+1. Log in to YouTrack at **https://www.youtrackradteam.com:8443**
+2. Click your profile picture in the top-right corner
+3. Click **"Profile"**
+4. Click the **"Authentication"** tab (sometimes called "Account Security")
+5. Under **"Permanent Tokens"**, click **"New token"**
+6. Give it a name like `slack-bot` and click **Create**
+7. **Copy the token immediately** — you won't be able to see it again
+
+---
+
+## Step 6 — Create your settings file
+
+In the bot folder, you'll see a file called `.env.example`. Make a copy of it and name the copy `.env` (just `.env`, no "example").
+
+> **On Mac/Windows:** You may need to show hidden files to see `.env` files. Alternatively, just open the `.env.example` file in a text editor (Notepad on Windows, TextEdit on Mac), edit it, and save it as `.env`.
+
+Open `.env` in a text editor and fill in your values. It looks like this:
+
 ```
+SLACK_BOT_TOKEN=xoxb-...put your Bot Token here...
+SLACK_APP_TOKEN=xapp-...put your App Token here...
 
-Edit `.env`:
-
-```
-SLACK_BOT_TOKEN=xoxb-...          # Bot User OAuth Token
-SLACK_APP_TOKEN=xapp-...          # App-Level Token (Socket Mode)
 YOUTRACK_URL=https://www.youtrackradteam.com:8443
-YOUTRACK_TOKEN=perm:...           # YouTrack permanent token
+YOUTRACK_TOKEN=perm:...put your YouTrack token here...
+
 SLACK_YOUTRACK_CHANNEL=#youtrack-activity
-OTTER_API_KEY=otterai_...
+
+OTTER_API_KEY=otterai_d9ANdECFNmcv2xQ-OzpKspS8tbw-Dzw5Tf7C3JYAvl4
+
 WEBHOOK_PORT=5000
 ```
 
-> **SSL note:** The YouTrack client sends `verify=False` by default because the server uses a self-signed certificate. To use a CA bundle instead, set `YOUTRACK_CA_BUNDLE=/path/to/ca.pem`.
+Replace the placeholder text with your actual tokens. Save the file.
 
-### 3. Run the bot
+> **Important:** Never share this file or upload it anywhere. It contains passwords.
 
-```bash
+---
+
+## Step 7 — Create the Slack channel
+
+In Slack, create a channel called `#youtrack-activity` (or whatever you put in `SLACK_YOUTRACK_CHANNEL`). Then **invite the bot to that channel**:
+
+1. Open the channel in Slack
+2. Type `/invite @YouTrack Bot` and press Enter
+
+---
+
+## Step 8 — Run the bot
+
+In your Terminal (make sure you're still in the bot folder), type:
+
+```
 python main.py
 ```
 
-You should see:
+You should see something like:
 ```
 Starting YouTrack webhook listener on port 5000
 Starting Slack Bolt app in Socket Mode…
 ⚡️ Bolt app is running!
 ```
 
+The bot is now running. **Leave this Terminal window open** — closing it stops the bot.
+
 ---
 
-## Configuring the YouTrack Webhook
+## Step 9 — Set up the YouTrack webhook (for automatic Slack notifications)
 
-YouTrack needs to be able to reach `http://<your-machine>:5000/youtrack/webhook`.
+For YouTrack to notify the bot when a new task is created, YouTrack needs a web address to send a message to. Since the bot is running on your computer, we use a free tool called **ngrok** to give your computer a temporary web address.
 
-### During local development — use ngrok
+### Install ngrok
+1. Go to **https://ngrok.com**, create a free account, and download ngrok
+2. Follow their quick-start instructions to connect your account (one command they give you)
 
-```bash
-# In a separate terminal
+### Start ngrok
+In a **new** Terminal window (keep the bot running in the other one), type:
+```
 ngrok http 5000
 ```
 
-Copy the `https://xxxx.ngrok.io` URL and in YouTrack:
-
-1. Go to **Administration → Notifications → Webhooks**
-2. Click **New webhook**
-3. Set URL to `https://xxxx.ngrok.io/youtrack/webhook`
-4. Event: **Issue created**
-5. Save and click **Test**
-
-The bot will post a formatted message to `#youtrack-activity` in Slack.
-
-### In production / always-on deployment
-
-Point the YouTrack webhook directly at your machine's IP/hostname on port 5000 (or whatever `WEBHOOK_PORT` is set to). Make sure the port is reachable from the YouTrack server.
-
----
-
-## Slack App Configuration
-
-### Required OAuth scopes (Bot Token)
-
-- `chat:write`
-- `commands`
-- `im:write`
-
-### Slash commands to register in Slack App settings
-
-| Command | Description |
-|---------|-------------|
-| `/create-task` | Create a YouTrack issue via a modal |
-| `/append-notes` | Append an Otter.ai meeting summary to a YouTrack ticket |
-
-Set the **Request URL** for slash commands to any placeholder — Socket Mode intercepts them before they hit HTTP.
-
-### Event subscriptions
-
-Not required for this MVP (Socket Mode handles everything).
-
----
-
-## Project Structure
-
+You'll see a line like:
 ```
-youtrack-slack-bot/
-├── .env                   # Credentials (never commit)
-├── .env.example           # Template
-├── requirements.txt
-├── main.py                # Entry point
-├── handlers/
-│   ├── commands.py        # /create-task, /append-notes
-│   ├── actions.py         # Modal submission callbacks
-│   └── webhooks.py        # Flask endpoint for YouTrack → Slack
-├── services/
-│   ├── youtrack.py        # YouTrack REST API client
-│   └── otter.py           # Otter.ai API client
-└── utils/
-    └── formatters.py      # Slack Block Kit message builders
+Forwarding   https://abc123.ngrok.io -> http://localhost:5000
 ```
 
+Copy that `https://abc123.ngrok.io` address.
+
+### Tell YouTrack about the webhook
+1. Log in to YouTrack and go to **Administration** (gear icon)
+2. Find **Integrations** → **Webhooks** (the exact menu depends on your YouTrack version)
+3. Click **New webhook**
+4. Set the URL to: `https://abc123.ngrok.io/youtrack/webhook`  
+   *(use your actual ngrok address)*
+5. Set the event to **Issue created**
+6. Save it and click **Test** — you should see a message appear in `#youtrack-activity` in Slack
+
+> **Note:** The ngrok address changes every time you restart ngrok (on the free plan). You'll need to update the YouTrack webhook URL each time. If this becomes annoying, ngrok's paid plan gives you a fixed address.
+
 ---
 
-## Error Handling Notes
+## Daily use
 
-This is an MVP focused on the happy path. The following areas should have
-more robust error handling before production use:
+- **To start the bot:** Open Terminal, go to the bot folder, run `python main.py`
+- **To stop the bot:** Click the Terminal window and press `Control + C`
+- **To create a task from Slack:** Type `/create-task` in any Slack channel
+- **To attach meeting notes:** Type `/append-notes` in any Slack channel
 
-- YouTrack API errors (rate limits, auth failures) in `services/youtrack.py`
-- Otter.ai API pagination and auth expiry in `services/otter.py`
-- Slack API retries in `handlers/webhooks.py`
-- Webhook signature verification (add a secret token to confirm requests are from YouTrack)
-- Input validation on modal fields before hitting the YouTrack API
+---
+
+## Something went wrong?
+
+| Problem | Try this |
+|---------|----------|
+| `python: command not found` | Python isn't installed or wasn't added to PATH — redo Step 1 |
+| `No module named slack_bolt` | Run `pip install -r requirements.txt` again |
+| Bot doesn't respond in Slack | Make sure the Terminal with `python main.py` is still open |
+| Slack notifications not appearing | Check that ngrok is running and the YouTrack webhook URL is up to date |
+| `SLACK_BOT_TOKEN` error on startup | Double-check your `.env` file — no spaces around the `=` sign |
