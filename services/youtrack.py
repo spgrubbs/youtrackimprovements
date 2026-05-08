@@ -84,5 +84,20 @@ def append_comment(issue_id: str, text: str) -> dict:
         return r.json()
 
 
+def get_recent_issues(top: int = 20) -> list[dict]:
+    """Return the most recently created issues, newest first."""
+    with _client() as c:
+        r = c.get(
+            f"{_BASE}/api/issues",
+            params={
+                "fields": _ISSUE_FIELDS,
+                "$top": top,
+                "query": "sort by: created desc",
+            },
+        )
+        r.raise_for_status()
+        return r.json()
+
+
 def issue_url(issue_id: str) -> str:
     return f"{_BASE}/issue/{issue_id}"

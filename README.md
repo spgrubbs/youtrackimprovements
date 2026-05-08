@@ -169,87 +169,13 @@ The bot is now running. **Leave this Terminal window open** — closing it stops
 
 ---
 
-## Step 9 — Connect YouTrack to Slack (automatic notifications)
+## Step 9 — Automatic Slack notifications for new issues
 
-For YouTrack to notify the bot when a new task is created, we use YouTrack's built-in **Workflow** feature. A workflow is a small automatic rule — think of it like an "if this, then that" trigger. You'll paste in a pre-written script; no coding knowledge needed.
+**No YouTrack configuration needed.** The bot automatically checks YouTrack every 30 seconds for new issues. When it finds one, it posts a message to `#youtrack-activity` in Slack.
 
-### Part A — Get your ngrok address
+To test it, just create a new issue in YouTrack. Within 30 seconds you should see it appear in Slack.
 
-The bot needs a public web address so YouTrack can reach it. We use a free tool called ngrok.
-
-1. Go to **https://ngrok.com**, create a free account, and download ngrok
-2. Follow their one-command setup instructions on the ngrok dashboard
-3. In a **new** Terminal window (keep the bot running in the other one), type:
-   ```
-   ngrok http 5000
-   ```
-4. You'll see a line like:
-   ```
-   Forwarding   https://abc123.ngrok.io -> http://localhost:5000
-   ```
-5. Copy that `https://abc123.ngrok.io` address — you'll need it in a moment
-
-> **Note:** This address changes every time you restart ngrok on the free plan. When that happens, repeat Part C below with the new address.
-
----
-
-### Part B — Create a Workflow in YouTrack
-
-1. Log in to YouTrack and go to **Administration** (the gear icon)
-2. Click **Workflow** in the left sidebar
-3. Click **"New workflow"** (or **"Create workflow"**)
-4. Give it a name like `Slack Notifications` and click **Create**
-5. Inside the new workflow, click **"Add rule"** → choose **"On change"** (or **"When issue is created"** if that option exists)
-6. You'll see a code editor. **Select all the existing text and delete it**, then paste in this script:
-
-```javascript
-var entities = require('@jetbrains/youtrack-scripting-api/entities');
-var http = require('@jetbrains/youtrack-scripting-api/http');
-
-exports.rule = entities.Issue.onChange({
-  title: 'Notify Slack when issue is created',
-  guard: function(ctx) {
-    return ctx.issue.becomesReported;
-  },
-  action: function(ctx) {
-    var issue = ctx.issue;
-    var webhookUrl = 'PASTE_YOUR_NGROK_URL_HERE';
-
-    var assignee = issue.fields.Assignee;
-    var priority = issue.fields.Priority;
-
-    var payload = JSON.stringify({
-      id: issue.id,
-      summary: issue.summary,
-      description: issue.description || '',
-      project: { name: issue.project.name },
-      reporter: { fullName: issue.reporter ? issue.reporter.fullName : 'Unknown' },
-      assignee: assignee ? { fullName: assignee.fullName } : null,
-      priority: priority ? { name: priority.name } : { name: 'Normal' }
-    });
-
-    var connection = new http.HttpConnection(webhookUrl);
-    connection.postSync('/youtrack/webhook', { 'Content-Type': 'application/json' }, payload);
-  },
-  requirements: {}
-});
-```
-
-7. In the pasted script, find the line that says `PASTE_YOUR_NGROK_URL_HERE` and replace it with your ngrok address from Part A (e.g. `https://abc123.ngrok.io`). Keep the quote marks.
-8. Click **Save**
-
----
-
-### Part C — Attach the workflow to your project
-
-The workflow exists but isn't active yet — you need to attach it to your project.
-
-1. Go to your **Project settings** (click your project name → Settings, or find it under Administration → Projects)
-2. Click the **"Workflow"** tab
-3. Click **"Attach workflow"** and select `Slack Notifications` from the list
-4. Click **Save**
-
-To test it, create a new issue in YouTrack — within a few seconds a message should appear in `#youtrack-activity` in Slack.
+That's it for this step — nothing to set up.
 
 ---
 
@@ -269,5 +195,5 @@ To test it, create a new issue in YouTrack — within a few seconds a message sh
 | `python: command not found` | Python isn't installed or wasn't added to PATH — redo Step 1 |
 | `No module named slack_bolt` | Run `pip install -r requirements.txt` again |
 | Bot doesn't respond in Slack | Make sure the Terminal with `python main.py` is still open |
-| Slack notifications not appearing | Check that ngrok is running; if you restarted ngrok, update the URL in the YouTrack workflow script (Step 9, Part C) |
+| Slack notifications not appearing | Wait up to 30 seconds — the bot polls on a timer. If still nothing, check the Terminal for error messages. |
 | `SLACK_BOT_TOKEN` error on startup | Double-check your `.env` file — no spaces around the `=` sign |
